@@ -1,0 +1,5 @@
+company_name,contact_name,designation,country,city,industry,product_category,website,email,phone,source,notes
+Valid Export GmbH,Anna Schmidt,Import Manager,Germany,Hamburg,Food,Packaged Foods,https://valid.example,anna@valid.example,+49123456789,Web Research,Valid record
+Invalid Email Ltd,John Brown,Buyer,UK,London,Textiles,Cotton,https://invalid.example,john@,+44123456789,Web Research,Bad email format
+Missing Country Co,David Lee,Buyer,,London,Electronics,Accessories,https://missing.example,david@missing.example,+44123456789,Web Research,Country missing
+No Email Trading,Sarah Khan,Purchasing Manager,UAE,Dubai,Textiles,Fabric,https://noemail.example,,+971501234567,Web Research,Email not available

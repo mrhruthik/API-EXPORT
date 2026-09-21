@@ -1,0 +1,4 @@
+company_name,contact_name,designation,country,city,industry,product_category,website,email,phone,source,notes
+Global Foods GmbH,Michael Weber,Import Manager,Germany,Berlin,Food & Beverage,Packaged Foods,https://globalfoods.example,michael@example.com,+49123456789,Trade Directory,Potential food importer
+Desert Trading LLC,Sarah Khan,Purchasing Manager,UAE,Dubai,Textiles,Cotton Products,https://deserttrading.example,sarah@example.com,+971501234567,Trade Directory,Textile buyer
+Euro Home Supplies,Jean Martin,Buyer,France,Paris,Home Goods,Kitchen Products,https://eurohome.example,jean@example.com,+33123456789,Web Research,Potential distributor

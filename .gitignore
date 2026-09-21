@@ -1,0 +1,28 @@
+# Environment variables / secrets
+.env
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# SQLite database
+*.db
+
+# Google authentication files
+credentials.json
+token.json
+
+# Uploaded/generated files
+uploads/*
+
+# IDE settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
