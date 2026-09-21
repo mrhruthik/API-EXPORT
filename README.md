@@ -1,183 +1,117 @@
-API EXPORT — AI-Powered Export Outreach Automation
+# API EXPORT
 
-API EXPORT is an international export buyer lead-generation and outreach system built with FastAPI, SQLAlchemy, SQLite, Tavily, Gmail API/Google Apps Script integration, and a browser dashboard.
+## Export Buyer Intelligence & Outreach Automation Platform
 
-Workflow
+API EXPORT is an export-sales automation platform designed to help businesses discover potential international buyers, manage buyer leads, validate contact information, automate outreach through Gmail, track follow-ups, monitor responses, and analyze the overall sales pipeline.
 
-Buyer discovery → lead collection → cleaning/duplicate detection → validation → qualification → outreach preparation → Gmail sending → follow-up tracking → response tracking → analytics.
+The system combines a FastAPI backend, SQLite database, web dashboard, buyer discovery through web search, lead validation, AI-based qualification support, and Gmail API integration into one workflow.
 
-Main Features
+---
 
-Lead CRUD management
+## Project Overview
 
-CSV/Excel lead import
+Finding international buyers manually can require significant time spent researching companies, collecting contact information, cleaning lead data, sending emails, and tracking follow-ups.
 
-Duplicate detection
+API EXPORT centralizes these activities into a single workflow:
 
-Email-format validation
+```text
+Market Research
+       ↓
+Buyer Discovery
+       ↓
+Lead Collection
+       ↓
+Duplicate Detection
+       ↓
+Lead Validation
+       ↓
+AI Qualification
+       ↓
+Email Preparation
+       ↓
+Gmail Outreach
+       ↓
+Follow-up Tracking
+       ↓
+Response Tracking
+       ↓
+Analytics
 
-Bulk validation
 
-Web buyer discovery using Tavily
 
-Lead qualification workflow
+## Features
 
-Outreach message generation
+- International buyer discovery
+- Lead collection and management
+- Duplicate detection
+- Lead validation
+- CSV/Excel lead import
+- AI-based buyer qualification support
+- Personalized email preparation
+- Gmail API integration
+- Safe email sending with duplicate-send protection
+- Follow-up scheduling and tracking
+- Buyer response status tracking
+- Sales pipeline analytics
+- Web-based dashboard
+- REST API with Swagger documentation
 
-Gmail email sending
+---
 
-Duplicate-send protection
+## Technology Stack
 
-Follow-up scheduling/tracking
+### Backend
+- Python 3.13
+- FastAPI
+- Uvicorn
+- SQLAlchemy
+- Pydantic
 
-Response status tracking
+### Database
+- SQLite
 
-Outreach summary/analytics
+### Frontend
+- HTML
+- CSS
+- JavaScript
 
-Responsive web dashboard
+### External Services
+- Tavily Web Search API
+- OpenAI API
+- Gmail API
 
-Swagger/OpenAPI documentation
+### Testing
+- Pytest
 
-Project Structure
+---
 
+## Project Structure
+
+```text
 API-EXPORT/
+│
 ├── app/
+│   ├── __init__.py
 │   ├── main.py
 │   ├── database.py
 │   ├── models.py
 │   ├── schemas.py
+│   ├── web.py
 │   ├── outreach.py
 │   ├── gmail_service.py
-│   ├── ai_classifier.py
-│   └── web.py
+│   └── ai_classifier.py
+│
 ├── frontend/
 │   ├── index.html
-│   ├── style.css
-│   └── app.js
+│   ├── app.js
+│   └── style.css
+│
 ├── tests/
+│   └── test_api.py
+│
 ├── uploads/
 ├── export.db
-├── .env
+├── requirements.txt
 ├── .env.example
 ├── .gitignore
-└── requirements.txt
-
-Requirements
-
-Python 3.13
-
-Gmail account for email sending
-
-Tavily API key for buyer discovery
-
-OpenAI API key if live AI classification is enabled
-
-Google Apps Script deployment if using the configured Apps Script integration
-
-Installation
-
-Create and activate a virtual environment:
-
-python -m venv venv
-.env\Scripts\Activate.ps1
-
-Install dependencies:
-
-pip install -r requirements.txt
-
-Environment Variables
-
-Create .env locally. Never commit it.
-
-Example:
-
-TAVILY_API_KEY=your_tavily_key
-OPENAI_API_KEY=your_openai_key
-APPS_SCRIPT_URL=your_apps_script_url
-APPS_SCRIPT_TOKEN=your_apps_script_token
-
-Use .env.example as the safe template.
-
-Start the API
-
-From the project root:
-
-uvicorn app.main:app --reload
-
-Swagger:
-
-http://127.0.0.1:8000/docs
-
-Start the Web Dashboard
-
-The dashboard is exposed through app.web:
-
-uvicorn app.web:app --reload
-
-Open:
-
-http://127.0.0.1:8000/dashboard/
-
-The dashboard consumes the existing FastAPI backend and displays live lead/outreach information from SQLite.
-
-Gmail
-
-Gmail sending is authenticated separately and should be tested with a controlled recipient before production outreach. The application records outreach status and prevents a lead from being sent again when its status is already SENT.
-
-Testing
-
-Run:
-
-pytest -q
-
-The included tests cover basic API availability, lead retrieval, outreach summary availability, and Swagger availability.
-
-AI Classification Limitation
-
-The AI classifier implementation is included in the project. During development, live classification testing was limited by the configured OpenAI account returning an insufficient-quota response. The implementation should therefore be described as implemented but not fully live-tested with paid API quota.
-
-Security
-
-Never commit:
-
-.env
-
-OAuth credentials
-
-Gmail tokens
-
-API keys
-
-deployment secrets
-
-local database files containing private data
-
-The repository should contain .env.example instead of real secrets.
-
-Evidence for Evaluation
-
-Recommended evidence:
-
-Dashboard screenshot
-
-Lead management screenshot
-
-Buyer discovery screenshot
-
-Validation/import screenshot
-
-Outreach preparation screenshot
-
-Successful Gmail send screenshot
-
-Follow-up/response tracking screenshot
-
-Analytics screenshot
-
-Swagger API screenshot
-
-GitHub repository link
-
-Project Status
-
-Core backend, database workflow, outreach workflow, Gmail integration, API documentation, and web dashboard are implemented. Remaining evaluation work should focus on automated test coverage, evidence organization, data cleanup, and deployment/submission requirements.
+└── README.md

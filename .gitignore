@@ -1,28 +1,69 @@
-# Environment variables / secrets
-.env
+# ==============================
+# Python
+# ==============================
 
-# Python virtual environment
-venv/
-.venv/
-
-# Python cache
 __pycache__/
 *.py[cod]
-*.pyo
+*$py.class
 
-# SQLite database
-*.db
+# ==============================
+# Virtual Environment
+# ==============================
 
-# Google authentication files
+venv/
+.venv/
+env/
+ENV/
+
+# ==============================
+# Environment / Secrets
+# ==============================
+
+.env
+
+# Gmail OAuth credentials
 credentials.json
 token.json
 
-# Uploaded/generated files
-uploads/*
+# ==============================
+# Database
+# ==============================
 
-# IDE settings
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================
+# Uploaded / Generated Files
+# ==============================
+
+uploads/
+.pytest_cache/
+
+# ==============================
+# Testing / Coverage
+# ==============================
+
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ==============================
+# IDE / Editor
+# ==============================
+
 .vscode/
+.idea/
 
-# OS files
+# ==============================
+# OS Files
+# ==============================
+
 .DS_Store
 Thumbs.db
+
+# ==============================
+# Logs
+# ==============================
+
+*.log
