@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API EXPORT — Outreach Automation</title>
+  <link rel="stylesheet" href="/dashboard/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">AE</div>
+        <div>
+          <div class="brand-title">API EXPORT</div>
+          <div class="brand-subtitle">Outreach Automation</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-page="dashboard"><span>▦</span> Dashboard</button>
+        <button class="nav-item" data-page="leads"><span>◉</span> Leads</button>
+        <button class="nav-item" data-page="discovery"><span>⌕</span> Buyer Discovery</button>
+        <button class="nav-item" data-page="outreach"><span>✉</span> Outreach</button>
+        <button class="nav-item" data-page="followups"><span>↻</span> Follow-ups</button>
+        <button class="nav-item" data-page="analytics"><span>▥</span> Analytics</button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="api-status"><span class="status-dot"></span><span id="apiStatus">Checking API...</span></div>
+        <a href="/docs" target="_blank" class="docs-link">Open Swagger API ↗</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">EXPORT INTELLIGENCE PLATFORM</div>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+        <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+      </header>
+
+      <section id="dashboard" class="page active">
+        <div class="hero">
+          <div>
+            <div class="hero-kicker">AI-POWERED EXPORT WORKFLOW</div>
+            <h2>Find buyers. Qualify leads. Start conversations.</h2>
+            <p>Centralized lead discovery, validation, outreach and follow-up tracking for international export sales.</p>
+          </div>
+          <button class="primary-btn" onclick="showPage('discovery')">＋ Discover Buyers</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Leads</div><div class="stat-value" id="sTotal">—</div><div class="stat-foot">All records</div></div>
+          <div class="stat-card"><div class="stat-label">Not Contacted</div><div class="stat-value" id="sNotContacted">—</div><div class="stat-foot">Ready for workflow</div></div>
+          <div class="stat-card"><div class="stat-label">Ready to Send</div><div class="stat-value" id="sReady">—</div><div class="stat-foot">Prepared outreach</div></div>
+          <div class="stat-card"><div class="stat-label">Emails Sent</div><div class="stat-value" id="sSent">—</div><div class="stat-foot">Gmail outreach</div></div>
+          <div class="stat-card"><div class="stat-label">Follow-ups Due</div><div class="stat-value" id="sFollowups">—</div><div class="stat-foot">Requires attention</div></div>
+          <div class="stat-card"><div class="stat-label">Responses</div><div class="stat-value" id="sResponses">—</div><div class="stat-foot">Buyer engagement</div></div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><div><h3>Recent Leads</h3><p>Latest records in the export pipeline.</p></div><button class="text-btn" onclick="showPage('leads')">View all →</button></div>
+            <div id="recentLeads" class="table-wrap"><div class="loading">Loading leads...</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><h3>Pipeline</h3><p>Current outreach distribution.</p></div></div>
+            <div class="pipeline" id="pipeline"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="leads" class="page">
+        <div class="section-head">
+          <div><h2>Lead Management</h2><p>Search, filter and inspect export buyer records.</p></div>
+          <button class="primary-btn" onclick="showPage('discovery')">＋ Add via Discovery</button>
+        </div>
+        <div class="toolbar">
+          <input id="leadSearch" class="input" placeholder="Search company, country, email..." oninput="renderLeads()" />
+          <select id="statusFilter" class="select" onchange="renderLeads()">
+            <option value="">All statuses</option>
+            <option>NEW</option><option>QUALIFIED</option><option>REJECTED</option>
+          </select>
+          <select id="validationFilter" class="select" onchange="renderLeads()">
+            <option value="">All validation</option>
+            <option>VALID</option><option>INVALID</option><option>PENDING</option>
+          </select>
+        </div>
+        <div class="panel"><div id="leadsTable" class="table-wrap"><div class="loading">Loading leads...</div></div></div>
+      </section>
+
+      <section id="discovery" class="page">
+        <div class="section-head">
+          <div><h2>Buyer Discovery</h2><p>Search the web for potential international importers, distributors and buyers.</p></div>
+        </div>
+        <div class="two-col">
+          <div class="panel form-panel">
+            <h3>Discovery Search</h3>
+            <p class="muted">Results are filtered and eligible candidates can be added to your lead database.</p>
+            <label>Product category<input id="dProduct" class="input" placeholder="e.g. Packaged Foods" /></label>
+            <label>Target country<input id="dCountry" class="input" placeholder="e.g. Germany" /></label>
+            <label>Industry<input id="dIndustry" class="input" placeholder="e.g. Food & Beverage" /></label>
+            <label>Keywords<input id="dKeywords" class="input" placeholder="e.g. importer distributor wholesale" /></label>
+            <button class="primary-btn full" onclick="discoverBuyers()">Run Buyer Discovery</button>
+            <div id="discoveryMsg"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><h3>Discovery Results</h3><p>Recent discovery/import activity appears here.</p></div></div>
+            <div id="discoveryResults" class="result-box">Run a search to see results.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="outreach" class="page">
+        <div class="section-head">
+          <div><h2>Outreach</h2><p>Prepare and send personalized buyer emails through Gmail.</p></div>
+        </div>
+        <div class="panel">
+          <div class="callout"><strong>Safe sending:</strong> the backend prevents sending the same lead twice.</div>
+          <div class="outreach-grid">
+            <div>
+              <label>Lead ID<input id="outreachLeadId" class="input" type="number" placeholder="e.g. 2" /></label>
+              <div class="button-row">
+                <button class="secondary-btn" onclick="prepareOutreach()">Prepare Email</button>
+                <button class="primary-btn" onclick="sendOutreach()">Send via Gmail</button>
+              </div>
+            </div>
+            <div id="outreachResult" class="result-box">Select a lead ID to preview outreach.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="followups" class="page">
+        <div class="section-head">
+          <div><h2>Follow-ups</h2><p>Monitor due follow-ups and buyer response status.</p></div>
+          <button class="refresh-btn" onclick="loadFollowups()">↻ Refresh</button>
+        </div>
+        <div class="panel">
+          <div id="followupTable" class="table-wrap"><div class="loading">Loading follow-ups...</div></div>
+        </div>
+      </section>
+
+      <section id="analytics" class="page">
+        <div class="section-head">
+          <div><h2>Analytics</h2><p>Operational view of the export outreach pipeline.</p></div>
+        </div>
+        <div class="stats-grid compact">
+          <div class="stat-card"><div class="stat-label">Total Leads</div><div class="stat-value" id="aTotal">—</div></div>
+          <div class="stat-card"><div class="stat-label">Sent</div><div class="stat-value" id="aSent">—</div></div>
+          <div class="stat-card"><div class="stat-label">Responses</div><div class="stat-value" id="aResponses">—</div></div>
+          <div class="stat-card"><div class="stat-label">Follow-ups</div><div class="stat-value" id="aFollowups">—</div></div>
+        </div>
+        <div class="panel">
+          <h3>Pipeline breakdown</h3>
+          <div id="analyticsBars"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/dashboard/app.js"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body
 import pandas as pd
 import os
 import re
@@ -1471,4 +1471,470 @@ async def import_leads(
         "invalid_count": invalid_count,
         "invalid_rows": invalid_rows,
         "duplicate_rows": duplicate_rows
+    }
+# ---------------------------------------------------------
+# Outreach Preparation
+# ---------------------------------------------------------
+
+from .outreach import prepare_outreach_for_lead
+from .gmail_service import send_email
+from datetime import datetime, timedelta, timezone
+
+
+@app.post("/leads/{lead_id}/outreach/prepare")
+def prepare_lead_outreach(
+    lead_id: int,
+    db: Session = Depends(get_db)
+):
+    lead = db.query(models.Lead).filter(
+        models.Lead.id == lead_id
+    ).first()
+
+    if lead is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead not found"
+        )
+
+    if lead.validation_status != "VALID":
+        raise HTTPException(
+            status_code=400,
+            detail="Lead must have VALID validation status before outreach preparation"
+        )
+
+    success, message = prepare_outreach_for_lead(lead)
+
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail=message
+        )
+
+    db.commit()
+    db.refresh(lead)
+
+    return {
+        "message": message,
+        "lead_id": lead.id,
+        "company_name": lead.company_name,
+        "email": lead.email,
+        "outreach_status": lead.outreach_status,
+        "subject": lead.outreach_subject,
+        "follow_up_at": lead.follow_up_at
+    }
+
+
+# ---------------------------------------------------------
+# Send Prepared Outreach Email
+# ---------------------------------------------------------
+
+@app.post("/leads/{lead_id}/outreach/send")
+def send_lead_outreach(
+    lead_id: int,
+    db: Session = Depends(get_db)
+):
+    lead = db.query(models.Lead).filter(
+        models.Lead.id == lead_id
+    ).first()
+
+    if lead is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead not found"
+        )
+
+    if lead.outreach_status == "SENT":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lead ID {lead.id} has already been sent an email."
+        )
+
+    if not lead.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Lead does not have an email address."
+        )
+
+    if lead.outreach_status != "READY_TO_SEND":
+        raise HTTPException(
+            status_code=400,
+            detail="Outreach must be prepared before sending."
+        )
+
+    if not lead.outreach_subject or not lead.outreach_body:
+        raise HTTPException(
+            status_code=400,
+            detail="Outreach subject/body is missing. Prepare outreach first."
+        )
+
+    try:
+        result = send_email(
+            lead.email,
+            lead.outreach_subject,
+            lead.outreach_body
+        )
+
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=502,
+                detail=result.get(
+                    "message",
+                    "Gmail failed to send the email."
+                )
+            )
+
+        # Store a naive UTC datetime because the existing SQLite
+        # model uses SQLAlchemy DateTime without timezone=True.
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        lead.outreach_status = "SENT"
+        lead.sent_at = now_utc
+        lead.response_status = "NO_RESPONSE"
+        lead.follow_up_at = now_utc + timedelta(days=5)
+
+        db.commit()
+        db.refresh(lead)
+
+        return {
+            "message": "Email sent successfully",
+            "lead_id": lead.id,
+            "company_name": lead.company_name,
+            "recipient": lead.email,
+            "outreach_status": lead.outreach_status,
+            "sent_at": lead.sent_at,
+            "follow_up_at": lead.follow_up_at,
+            "response_status": lead.response_status
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Email sending failed: {str(e)}"
+        )
+
+
+# ---------------------------------------------------------
+# Get Outreach Status
+# ---------------------------------------------------------
+
+@app.get("/leads/{lead_id}/outreach")
+def get_lead_outreach(
+    lead_id: int,
+    db: Session = Depends(get_db)
+):
+    lead = db.query(models.Lead).filter(
+        models.Lead.id == lead_id
+    ).first()
+
+    if lead is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead not found"
+        )
+
+    return {
+        "lead_id": lead.id,
+        "company_name": lead.company_name,
+        "email": lead.email,
+        "outreach_status": lead.outreach_status,
+        "outreach_subject": lead.outreach_subject,
+        "outreach_body": lead.outreach_body,
+        "sent_at": lead.sent_at,
+        "follow_up_at": lead.follow_up_at,
+        "response_status": lead.response_status
+    }
+
+
+# ---------------------------------------------------------
+# Outreach Summary
+# ---------------------------------------------------------
+
+@app.get("/outreach/summary")
+def get_outreach_summary(
+    db: Session = Depends(get_db)
+):
+    leads = db.query(models.Lead).all()
+
+    summary = {
+        "total_leads": len(leads),
+        "not_contacted": 0,
+        "ready_to_send": 0,
+        "sent": 0,
+        "follow_up_pending": 0,
+        "responses_received": 0
+    }
+
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    for lead in leads:
+        status = lead.outreach_status or "NOT_CONTACTED"
+
+        if status == "NOT_CONTACTED":
+            summary["not_contacted"] += 1
+        elif status == "READY_TO_SEND":
+            summary["ready_to_send"] += 1
+        elif status in {"SENT", "FOLLOW_UP_SENT"}:
+            summary["sent"] += 1
+
+        if (
+            lead.outreach_status == "SENT"
+            and lead.follow_up_at
+            and lead.follow_up_at <= now_utc
+            and (lead.response_status or "NO_RESPONSE") == "NO_RESPONSE"
+        ):
+            summary["follow_up_pending"] += 1
+
+        if lead.response_status and lead.response_status != "NO_RESPONSE":
+            summary["responses_received"] += 1
+
+    return summary
+
+
+# ---------------------------------------------------------
+# Follow-up Management - Due Follow-ups
+# ---------------------------------------------------------
+
+@app.get("/outreach/follow-ups/due")
+def get_due_followups(
+    db: Session = Depends(get_db)
+):
+    """
+    Returns leads whose scheduled follow-up time has arrived and
+    that have not yet received a response.
+    """
+
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    leads = db.query(models.Lead).filter(
+        models.Lead.outreach_status == "SENT",
+        models.Lead.follow_up_at.isnot(None),
+        models.Lead.follow_up_at <= now_utc,
+        models.Lead.response_status == "NO_RESPONSE"
+    ).order_by(
+        models.Lead.follow_up_at.asc()
+    ).all()
+
+    return {
+        "count": len(leads),
+        "follow_ups": [
+            {
+                "lead_id": lead.id,
+                "company_name": lead.company_name,
+                "email": lead.email,
+                "sent_at": lead.sent_at,
+                "follow_up_at": lead.follow_up_at,
+                "response_status": lead.response_status
+            }
+            for lead in leads
+        ]
+    }
+
+
+# ---------------------------------------------------------
+# Send Follow-up Email
+# ---------------------------------------------------------
+
+@app.post("/leads/{lead_id}/outreach/follow-up")
+def send_lead_followup(
+    lead_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Sends a follow-up only when the original outreach was sent,
+    the scheduled follow-up time has arrived, and no response exists.
+    """
+
+    lead = db.query(models.Lead).filter(
+        models.Lead.id == lead_id
+    ).first()
+
+    if lead is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead not found"
+        )
+
+    if lead.outreach_status not in {"SENT", "FOLLOW_UP_SENT"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Original outreach must be sent before a follow-up can be sent."
+        )
+
+    if lead.response_status and lead.response_status != "NO_RESPONSE":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Follow-up is not allowed because response status is {lead.response_status}."
+        )
+
+    if lead.follow_up_at is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No pending follow-up is scheduled for this lead."
+        )
+
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    if lead.follow_up_at > now_utc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Follow-up is not due until {lead.follow_up_at.isoformat()} UTC."
+        )
+
+    if not lead.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Lead does not have an email address."
+        )
+
+    original_subject = lead.outreach_subject or "Business Opportunity"
+    followup_subject = (
+        original_subject
+        if original_subject.lower().startswith("follow-up:")
+        else f"Follow-up: {original_subject}"
+    )
+
+    company_name = lead.company_name or "your company"
+    product = lead.product_category or "our products"
+
+    followup_body = f"""Hello,
+
+I am following up on my previous email regarding a potential business opportunity for {product}.
+
+We would be glad to share product details, specifications, pricing, minimum order quantities, and export/shipping information if {company_name} is currently sourcing or importing these products.
+
+Please let us know if this is relevant to your purchasing or procurement team.
+
+Best regards,
+API EXPORT
+International Business Development
+"""
+
+    try:
+        result = send_email(
+            lead.email,
+            followup_subject,
+            followup_body
+        )
+
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=502,
+                detail=result.get(
+                    "message",
+                    "Gmail failed to send the follow-up email."
+                )
+            )
+
+        lead.outreach_status = "FOLLOW_UP_SENT"
+        lead.follow_up_at = None
+
+        existing_notes = lead.notes or ""
+        timestamp = now_utc.isoformat()
+        lead.notes = (
+            existing_notes
+            + f"\nFollow-up sent at: {timestamp} UTC"
+        )
+
+        db.commit()
+        db.refresh(lead)
+
+        return {
+            "message": "Follow-up email sent successfully",
+            "lead_id": lead.id,
+            "company_name": lead.company_name,
+            "recipient": lead.email,
+            "outreach_status": lead.outreach_status,
+            "response_status": lead.response_status,
+            "follow_up_sent_at": now_utc
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Follow-up sending failed: {str(e)}"
+        )
+
+
+# ---------------------------------------------------------
+# Update Buyer Response Status
+# ---------------------------------------------------------
+
+@app.patch("/leads/{lead_id}/outreach/response")
+def update_outreach_response(
+    lead_id: int,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Records the current buyer response state.
+
+    Allowed statuses:
+    NO_RESPONSE, RESPONDED, INTERESTED, NOT_INTERESTED,
+    BOUNCED, FOLLOW_UP_REQUIRED
+    """
+
+    lead = db.query(models.Lead).filter(
+        models.Lead.id == lead_id
+    ).first()
+
+    if lead is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lead not found"
+        )
+
+    response_status = str(
+        payload.get("response_status", "")
+    ).strip().upper()
+
+    allowed_statuses = {
+        "NO_RESPONSE",
+        "RESPONDED",
+        "INTERESTED",
+        "NOT_INTERESTED",
+        "BOUNCED",
+        "FOLLOW_UP_REQUIRED"
+    }
+
+    if response_status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid response status. Allowed values: "
+                + ", ".join(sorted(allowed_statuses))
+            )
+        )
+
+    lead.response_status = response_status
+
+    # A recorded response means the scheduled follow-up should no longer
+    # remain pending unless the response explicitly asks for another follow-up.
+    if response_status in {
+        "RESPONDED",
+        "INTERESTED",
+        "NOT_INTERESTED",
+        "BOUNCED"
+    }:
+        lead.follow_up_at = None
+
+    db.commit()
+    db.refresh(lead)
+
+    return {
+        "message": "Response status updated successfully",
+        "lead_id": lead.id,
+        "company_name": lead.company_name,
+        "outreach_status": lead.outreach_status,
+        "response_status": lead.response_status,
+        "follow_up_at": lead.follow_up_at
     }
